@@ -49,10 +49,10 @@ export class PipelineStack extends Stack {
     pipeline.pipeline.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       resources: [connectionArn],
-      actions: ['codestar-connections:PassConnection'],
+      actions: ['codestar-connections:UseConnection'],
       conditions: {
         'ForAllValues:StringEquals': {
-          'codestar-connections:PassedToService': 'codepipeline.amazonaws.com',
+          'codestar-connections:FullRepositoryId': props.repoName,
         },
       },
     }));
