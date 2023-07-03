@@ -32,7 +32,7 @@ export class PipelineStack extends Stack {
         commands: [
           'npm ci',
           'npm run build',
-          'npx cdk synth --app \'npx ts-node --prefer-ts-exts bin/pipeline.ts\'',
+          `npx cdk synth --app \'npx ts-node --prefer-ts-exts bin/pipeline-${props.environment}.ts\'`,
         ],
       }),
     });
