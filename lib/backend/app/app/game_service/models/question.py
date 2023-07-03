@@ -13,5 +13,6 @@ class QuestionModel(BaseModel):
         "from 1"
     )
     clarification: str = Field(
-        description="A clarifying answer to the quiz question for informative ends"
+        description="A clarifying answer to the quiz question for informative ends."
+        "Include the source of the answer"
     )

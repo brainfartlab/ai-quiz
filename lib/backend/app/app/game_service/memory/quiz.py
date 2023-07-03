@@ -1,9 +1,13 @@
 import json
 from typing import Any, Dict, List
 
+from aws_lambda_powertools import Logger, Tracer
 from langchain.schema import BaseMemory
 from langchain.schema import AIMessage
 from pydantic import BaseModel
+
+
+logger = Logger()
 
 
 class QuizMemory(BaseMemory, BaseModel):
@@ -31,8 +35,10 @@ class QuizMemory(BaseMemory, BaseModel):
         questions = []
 
         for message in inputs["chat_history"]:
+            logger.info(message.content)
             if isinstance(message, AIMessage):
                 question = json.loads(message.content)
                 questions.append(question["prompt"])
 
+        logger.info(questions)
         self.questions = questions

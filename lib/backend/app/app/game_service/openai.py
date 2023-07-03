@@ -70,8 +70,6 @@ class OpenAIService(BaseGameService):
         return CombinedMemory(memories=[chat_memory, quiz_memory])
 
     def generate_question(self, game: Game) -> Question:
-        output_parser = self.get_output_parser()
-
         chain = LLMChain(
             llm=self.llm,
             prompt=self.prompt,
@@ -79,10 +77,10 @@ class OpenAIService(BaseGameService):
         )
 
         output = chain.run(
-            input="Generate a question",
+            input="Generate a new question",
             keywords=", ".join(game.keywords),
         )
-        question_data = output_parser.parse(output)
+        question_data = self.parser.parse(output)
 
         question = Question.create(
             prompt=question_data.prompt,
