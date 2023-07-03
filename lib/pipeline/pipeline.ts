@@ -25,6 +25,7 @@ export class PipelineStack extends Stack {
 
     const pipeline = new CodePipeline(this, 'QuizPipeline', {
       crossAccountKeys: true,
+      dockerEnabledForSynth: true,
       synth: new ShellStep('Synth', {
         input: CodePipelineSource.connection(props.repoName, props.branch, {
           connectionArn,
