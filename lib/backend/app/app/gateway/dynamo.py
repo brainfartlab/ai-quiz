@@ -1,6 +1,6 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import itertools
-import os
 from typing import Any, Dict, Iterator, List
 
 import boto3
@@ -14,10 +14,6 @@ from ..game import Game
 from ..question import Question
 
 
-PARAM_GAME_TABLE = os.getenv("GAME_TABLE")
-PARAM_QUESTION_TABLE = os.getenv("QUESTION_TABLE")
-
-
 def deserialize(record: Dict[str, Any]) -> Dict[str, Any]:
     deserializer = TypeDeserializer()
     return dict((k, deserializer.deserialize(v)) for k, v in record.items())
@@ -28,8 +24,12 @@ def serialize(record: Dict[str, Any]) -> Dict[str, Any]:
     return dict((k, serializer.serialize(v)) for k, v in record.items())
 
 
+@dataclass
 class DynamoGateway(BaseGateway):
-    def __init__(self, client=boto3.client("dynamodb")):
+    game_table: str
+    question_table: str
+
+    def __post_init__(self, client=boto3.client("dynamodb")):
         self._client = client
 
     def list_player_games(
@@ -39,7 +39,7 @@ class DynamoGateway(BaseGateway):
         paginator = self._client.get_paginator("query")
 
         for page in paginator.paginate(
-            TableName=PARAM_GAME_TABLE,
+            TableName=self.game_table,
             IndexName="creation-time-index",
             Select="ALL_PROJECTED_ATTRIBUTES",
             KeyConditionExpression="PlayerId = :player_id",
@@ -69,7 +69,7 @@ class DynamoGateway(BaseGateway):
 
     def store_game(self, player_id: str, game: Game):
         response = self._client.put_item(
-            TableName=PARAM_GAME_TABLE,
+            TableName=self.game_table,
             Item=serialize(
                 {
                     "PlayerId": player_id,
@@ -110,7 +110,7 @@ class DynamoGateway(BaseGateway):
         game_id: str,
     ) -> Game:
         response = self._client.get_item(
-            TableName=PARAM_GAME_TABLE,
+            TableName=self.game_table,
             Key=serialize(
                 {
                     "PlayerId": player_id,
@@ -148,7 +148,7 @@ class DynamoGateway(BaseGateway):
         paginator = self._client.get_paginator("query")
 
         for page in paginator.paginate(
-            TableName=PARAM_QUESTION_TABLE,
+            TableName=self.question_table,
             KeyConditionExpression="GameId = :game_id",
             ExpressionAttributeValues={
                 ":game_id": {"S": game_id},
@@ -177,7 +177,7 @@ class DynamoGateway(BaseGateway):
         count = 0
 
         for page in paginator.paginate(
-            TableName=PARAM_QUESTION_TABLE,
+            TableName=self.question_table,
             KeyConditionExpression="GameId = :game_id",
             ExpressionAttributeValues={
                 ":game_id": {"S": game_id},
@@ -194,7 +194,7 @@ class DynamoGateway(BaseGateway):
         question_id: int,
     ) -> Question:
         response = self._client.get_item(
-            TableName=PARAM_QUESTION_TABLE,
+            TableName=self.question_table,
             Key=serialize(
                 {
                     "GameId": game_id,
@@ -237,7 +237,7 @@ class DynamoGateway(BaseGateway):
             question_data["Choice"] = question.choice
 
         response = self._client.put_item(
-            TableName=PARAM_QUESTION_TABLE,
+            TableName=self.question_table,
             Item=serialize(question_data),
         )
 
@@ -252,7 +252,7 @@ class DynamoGateway(BaseGateway):
     ):
         if question.is_answered:
             self._client.update_item(
-                TableName=PARAM_QUESTION_TABLE,
+                TableName=self.question_table,
                 Key=serialize(
                     {
                         "GameId": game_id,

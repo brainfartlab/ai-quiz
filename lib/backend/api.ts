@@ -3,6 +3,7 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
 import * as apigw2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import * as authorizers from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 import * as integrations from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
@@ -24,18 +25,22 @@ export class Api extends Construct {
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
+    const apiKey = new secrets.Secret(this, 'ApiKey');
+
     const handlerFunction = new pythonLambda.PythonFunction(this, 'HandlerFunction', {
       entry: 'lib/backend/app',
       environment: {
         GAME_TABLE: props.gameTable.tableName,
         SESSION_TABLE: props.memoryTable.tableName,
         QUESTION_TABLE: props.questionTable.tableName,
-        OPENAI_API_KEY: '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',
+        OPENAI_API_KEY_SECRET: apiKey.secretName,
       },
       memorySize: 256,
       runtime: lambda.Runtime.PYTHON_3_10,
       timeout: cdk.Duration.seconds(60),
     });
+
+    apiKey.grantRead(handlerFunction);
 
     props.gameTable.grantReadWriteData(handlerFunction);
     props.memoryTable.grantReadWriteData(handlerFunction);

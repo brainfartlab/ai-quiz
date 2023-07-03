@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import urllib
 
 from auth0.authentication import Users
@@ -15,6 +16,7 @@ from aws_lambda_powertools.event_handler.exceptions import (
 )
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
+import boto3
 
 from .game import Game, InvalidGame, QuestionsLimitReached
 from .game_service import OpenAIService
@@ -26,8 +28,26 @@ tracer = Tracer()
 logger = Logger()
 app = APIGatewayHttpResolver()
 
-gateway = DynamoGateway()
-service = OpenAIService()
+
+def initialize():
+    global gateway, service
+
+    secrets_client = boto3.client("secretsmanager")
+    openai_key = secrets_client.get_secret_value(
+        SecretId=os.getenv("OPENAI_API_KEY_SECRET")
+    )
+
+    gateway = DynamoGateway(
+        game_table=os.getenv("GAME_TABLE"),
+        question_table=os.getenv("QUESTION_TABLE"),
+    )
+    service = OpenAIService(
+        api_key=openai_key["SecretString"],
+        session_table=os.getenv("SESSION_TABLE"),
+    )
+
+
+initialize()
 
 
 @app.get("/games")
@@ -36,16 +56,14 @@ def get_games():
     player = get_player(app.current_event)
     games = gateway.list_player_games(player.player_id)
 
-    return {
-        "games": [
-            game.to_dict() for game in games
-        ]
-    }
+    return {"games": [game.to_dict() for game in games]}
 
 
 @app.post("/games")
 @tracer.capture_method
 def start_game():
+    global gateway
+
     json_payload = app.current_event.json_body
 
     player = get_player(app.current_event)
@@ -61,6 +79,8 @@ def start_game():
 @app.get("/games/<game>")
 @tracer.capture_method
 def get_game(game):
+    global gateway
+
     player = get_player(app.current_event)
     game = gateway.get_game(player.player_id, game)
 
@@ -70,6 +90,8 @@ def get_game(game):
 @app.get("/games/<game>/questions")
 @tracer.capture_method
 def get_questions(game):
+    global gateway
+
     player = get_player(app.current_event)
     game = gateway.get_game(player.player_id, game)
 
@@ -79,8 +101,9 @@ def get_questions(game):
                 "prompt": question.prompt,
                 "solution": question.solution_str,
                 "result": question.answered_correctly,
-            } if question.is_answered else
-            {
+            }
+            if question.is_answered
+            else {
                 "prompt": question.prompt,
             }
             for question in game.questions
@@ -91,6 +114,8 @@ def get_questions(game):
 @app.post("/games/<game>/questions/ask")
 @tracer.capture_method
 def generate_question(game):
+    global gateway, service
+
     player = get_player(app.current_event)
     game = gateway.get_game(player.player_id, game)
 
@@ -106,6 +131,8 @@ def generate_question(game):
 @app.get("/games/<game>/questions/<question>")
 @tracer.capture_method
 def get_question(game, question):
+    global gateway
+
     player = get_player(app.current_event)
     game = gateway.get_game(player.player_id, game)
     question = question.get_game_question(game, question)
@@ -119,6 +146,8 @@ def get_question(game, question):
 @app.post("/games/<game>/questions/answer")
 @tracer.capture_method
 def answer_question(game):
+    global gateway
+
     json_payload = app.current_event.json_body
 
     player = get_player(app.current_event)
@@ -163,13 +192,15 @@ def handle_questions_limit_reached(ex: QuestionsLimitReached):
     return Response(
         status_code=400,
         content_type=content_types.APPLICATION_JSON,
-        body=json.dumps({
-            "errors": [
-                {
-                    "message": f"Game {game_id} has reached questions limit of {questions_limit}",
-                }
-            ]
-        })
+        body=json.dumps(
+            {
+                "errors": [
+                    {
+                        "message": f"Game {game_id} has reached questions limit of {questions_limit}",
+                    }
+                ]
+            }
+        ),
     )
 
 

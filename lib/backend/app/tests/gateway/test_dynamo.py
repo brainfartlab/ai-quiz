@@ -42,28 +42,34 @@ class TestDynamoGateway:
                     {
                         "PlayerId": {"S": "player1"},
                         "GameId": {"S": "1"},
-                        "Keywords": {"SS": [
-                            "history",
-                            "Napoleon",
-                        ]},
+                        "Keywords": {
+                            "SS": [
+                                "history",
+                                "Napoleon",
+                            ]
+                        },
                         "CreationTime": {"N": "1687468904"},
                         "QuestionsLimit": {"N": "15"},
                     },
                     {
                         "PlayerId": {"S": "player1"},
                         "GameId": {"S": "2"},
-                        "Keywords": {"SS": [
-                            "mathematics",
-                        ]},
+                        "Keywords": {
+                            "SS": [
+                                "mathematics",
+                            ]
+                        },
                         "CreationTime": {"N": "1687468904"},
                         "QuestionsLimit": {"N": "15"},
                     },
                     {
                         "PlayerId": {"S": "player1"},
                         "GameId": {"S": "3"},
-                        "Keywords": {"SS": [
-                            "movies",
-                        ]},
+                        "Keywords": {
+                            "SS": [
+                                "movies",
+                            ]
+                        },
                         "CreationTime": {"N": "1687468904"},
                         "QuestionsLimit": {"N": "15"},
                     },
@@ -173,10 +179,12 @@ class TestDynamoGateway:
                 "Item": {
                     "PlayerId": {"S": "player1"},
                     "GameId": {"S": "1"},
-                    "Keywords": {"SS": [
-                        "history",
-                        "Napoleon",
-                    ]},
+                    "Keywords": {
+                        "SS": [
+                            "history",
+                            "Napoleon",
+                        ]
+                    },
                     "CreationTime": {"N": "1687468904"},
                     "QuestionsLimit": {"N": "15"},
                 },
@@ -279,10 +287,12 @@ class TestDynamoGateway:
                 "Item": {
                     "PlayerId": {"S": "player1"},
                     "GameId": {"S": "1"},
-                    "Keywords": {"SS": [
-                        "history",
-                        "Napoleon",
-                    ]},
+                    "Keywords": {
+                        "SS": [
+                            "history",
+                            "Napoleon",
+                        ]
+                    },
                     "CreationTime": {"N": "1687468904"},
                     "QuestionsLimit": {"N": "15"},
                 },
@@ -313,10 +323,12 @@ class TestDynamoGateway:
                 "Item": {
                     "PlayerId": {"S": "player1"},
                     "GameId": {"S": "1"},
-                    "Keywords": {"SS": [
-                        "history",
-                        "Napoleon",
-                    ]},
+                    "Keywords": {
+                        "SS": [
+                            "history",
+                            "Napoleon",
+                        ]
+                    },
                     "CreationTime": {"N": "1687468904"},
                     "QuestionsLimit": {"N": "15"},
                 },

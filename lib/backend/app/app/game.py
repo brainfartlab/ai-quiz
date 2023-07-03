@@ -47,9 +47,8 @@ class Game:
             "keywords": list(self.keywords),
             "questions_count": self.questions_answered,
             "questions_limit": self.questions_limit,
-            "creation_time": int(1000 * self.creation_time.timestamp())
+            "creation_time": int(1000 * self.creation_time.timestamp()),
         }
-
 
     @staticmethod
     def create(keywords: List[str], questions_limit: int):
@@ -94,6 +93,7 @@ class InvalidGame(Exception):
                 {
                     "field": e.field,
                     "message": e.message,
-                } for e in self.errors
+                }
+                for e in self.errors
             ]
         }
