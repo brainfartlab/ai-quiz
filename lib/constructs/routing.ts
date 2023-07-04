@@ -9,6 +9,8 @@ import { DomainSettings } from '../constants';
 interface RoutingProps {
   api: apigw2.IHttpApi;
   environment: 'dev' | 'prd' | 'tst';
+  hostedZoneId: string;
+  netlifyDomain: string;
   path: string;
   stage: apigw2.HttpStage;
 }
@@ -32,6 +34,13 @@ export class Routing extends Construct {
       apiMappingKey: props.path,
       domainName,
       stage: props.stage,
+    });
+
+    const hostedZone = route53.HostedZone.fromHostedZoneId(this, 'HostedZone', props.hostedZoneId);
+    new route53.CnameRecord(this, 'QuizFrontEndRecord', {
+      recordName: `quiz.${props.environment}.${DomainSettings.domainName}`,
+      zone: hostedZone,
+      domainName: props.netlifyDomain,
     });
   }
 }

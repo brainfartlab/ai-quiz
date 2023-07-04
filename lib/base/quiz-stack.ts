@@ -41,6 +41,8 @@ export class QuizStack extends cdk.Stack {
 
     new Routing(this, 'Routing', {
       api: quizApi.api,
+      hostedZoneId: 'Z101975334KQ8NOCYJ97L',
+      netlifyDomain: 'darling-snickerdoodle-52e50d.netlify.app',
       path: 'quiz/v1',
       environment: props.environment,
       stage: quizApi.stage,
