@@ -26,7 +26,7 @@ export class QuizStack extends cdk.Stack {
     });
 
     const origin = {
-      'dev': 'https://darling-snickerdoodle-52e50d.netlify.app',
+      'dev': 'https://quiz.dev.brainfartlab.com',
       'tst': 'http://localhost:1234',
       'prd': '',
     }[props.environment];
