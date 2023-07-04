@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import itertools
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List
 
 import boto3
 from boto3.dynamodb.types import (
@@ -10,7 +10,7 @@ from boto3.dynamodb.types import (
     TypeSerializer,
 )
 
-from .base import BaseGateway, NoSuchGame, NoSuchQuestion
+from .base import BaseGateway, NoSuchGame, NoSuchQuestion, UnknownToken
 from ..game import Game
 from ..player import Player
 from ..question import Question
@@ -309,3 +309,5 @@ class DynamoGateway(BaseGateway):
             TableName=self.token_table,
             Item=serialize(user_data),
         )
+
+        print(response)

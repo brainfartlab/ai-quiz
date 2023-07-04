@@ -12,3 +12,4 @@ cdk.out
 
 # Python
 .venv
+__pycache__

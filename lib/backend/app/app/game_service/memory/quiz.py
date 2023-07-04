@@ -1,9 +1,8 @@
 import json
 from typing import Any, Dict, List
 
-from aws_lambda_powertools import Logger, Tracer
-from langchain.schema import BaseMemory
-from langchain.schema import AIMessage
+from aws_lambda_powertools import Logger
+from langchain.schema import AIMessage, BaseMemory
 from pydantic import BaseModel
 
 

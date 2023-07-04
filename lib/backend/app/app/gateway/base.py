@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from ..game import Game
+from ..player import Player
 from ..question import Question
 
 
