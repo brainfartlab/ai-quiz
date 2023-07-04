@@ -40,7 +40,7 @@ def initialize():
     gateway = DynamoGateway(
         game_table=os.getenv("GAME_TABLE"),
         question_table=os.getenv("QUESTION_TABLE"),
-        token_table=is.getenv("TOKEN_TABLE"),
+        token_table=os.getenv("TOKEN_TABLE"),
     )
     service = OpenAIService(
         api_key=openai_key["SecretString"],
