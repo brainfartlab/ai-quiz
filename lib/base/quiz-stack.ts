@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
+import { Cache } from '../constructs/cache';
 import { Data } from '../constructs/data';
 import { ChatMemory } from '../constructs/memory';
 import { Routing } from '../constructs/routing';
@@ -20,6 +21,9 @@ export class QuizStack extends cdk.Stack {
     const data = new Data(this, 'DataStorage', {
       retainData: props.environment === 'prd',
     });
+    const cache = new Cache(this, 'Cache', {
+      retainData: props.environment === 'prd',
+    });
 
     const origin = {
       'dev': 'https://darling-snickerdoodle-52e50d.netlify.app',
@@ -32,6 +36,7 @@ export class QuizStack extends cdk.Stack {
       gameTable: data.gameTable,
       memoryTable: chatMemory.memoryTable,
       questionTable: data.questionTable,
+      tokenTable: cache.tokenTable,
     });
 
     new Routing(this, 'Routing', {

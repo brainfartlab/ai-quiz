@@ -9,3 +9,6 @@ cdk.out
 
 # Vim files
 *.swp
+
+# Python
+.venv

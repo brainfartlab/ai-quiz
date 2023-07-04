@@ -20,7 +20,7 @@ import boto3
 
 from .game import Game, InvalidGame, QuestionsLimitReached
 from .game_service import OpenAIService
-from .gateway import DynamoGateway, NoSuchGame, NoSuchQuestion
+from .gateway import DynamoGateway, NoSuchGame, NoSuchQuestion, UnknownToken
 from .player import Player
 
 
@@ -40,6 +40,7 @@ def initialize():
     gateway = DynamoGateway(
         game_table=os.getenv("GAME_TABLE"),
         question_table=os.getenv("QUESTION_TABLE"),
+        token_table=is.getenv("TOKEN_TABLE"),
     )
     service = OpenAIService(
         api_key=openai_key["SecretString"],
@@ -204,14 +205,27 @@ def handle_questions_limit_reached(ex: QuestionsLimitReached):
     )
 
 
+def hash(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
 def get_player(event) -> Player:
+    global gateway
+
     domain = urllib.parse.urlparse(event.request_context.authorizer.jwt_claim["iss"])
     token = event.get_header_value("Authorization").split(" ")[-1]
 
-    users = Users(domain.netloc)
-    user = users.userinfo(token)
+    try:
+        return gateway.get_player_by_token(token)
+    except UnknownToken:
+        users = Users(domain.netloc)
+        user = users.userinfo(token)
 
-    return Player(hashlib.md5(user["email"].encode("utf-8")).hexdigest())
+        player_id = hash(user["email"])
+        player = Player(player_id)
+        gateway.store_player_by_token(token, player)
+
+        return player
 
 
 @logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_HTTP)

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import itertools
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Optional
 
 import boto3
 from boto3.dynamodb.types import (
@@ -11,6 +12,7 @@ from boto3.dynamodb.types import (
 
 from .base import BaseGateway, NoSuchGame, NoSuchQuestion
 from ..game import Game
+from ..player import Player
 from ..question import Question
 
 
@@ -24,10 +26,15 @@ def serialize(record: Dict[str, Any]) -> Dict[str, Any]:
     return dict((k, serializer.serialize(v)) for k, v in record.items())
 
 
+def hash(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
 @dataclass
 class DynamoGateway(BaseGateway):
     game_table: str
     question_table: str
+    token_table: str
 
     def __post_init__(self, client=boto3.client("dynamodb")):
         self._client = client
@@ -266,3 +273,39 @@ class DynamoGateway(BaseGateway):
                     }
                 ),
             )
+
+    def get_player_by_token(self, token: str) -> Player:
+        token_hash = hash(token)
+
+        response = self._client.get_item(
+            TableName=self.token_table,
+            Key=serialize(
+                {
+                    "TokenHash": token_hash,
+                }
+            ),
+        )
+
+        if "Item" in response:
+            user_data = deserialize(response["Item"])
+
+            return Player(user_data["PlayerId"])
+        else:
+            raise UnknownToken
+
+    def store_player_by_token(self, token: str, player: Player, duration: int = 3600):
+        token_hash = hash(token)
+
+        epoch = int(datetime.now().timestamp())
+        epoch += duration
+
+        user_data = {
+            "TokenHash": token_hash,
+            "PlayerId": player.player_id,
+            "ExpirationEpoch": epoch,
+        }
+
+        response = self._client.put_item(
+            TableName=self.token_table,
+            Item=serialize(user_data),
+        )

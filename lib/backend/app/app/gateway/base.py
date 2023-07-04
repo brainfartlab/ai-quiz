@@ -16,6 +16,11 @@ class NoSuchQuestion(Exception):
         self.question_index = question_index
 
 
+class UnknownToken(Exception):
+    def __init__(self, token: str):
+        self.token = token
+
+
 class BaseGateway(ABC):
     @abstractmethod
     def list_player_games(
@@ -78,5 +83,20 @@ class BaseGateway(ABC):
         game_id: str,
         question_id: int,
         question: Question,
+    ):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_player_by_token(
+        self,
+        token: str,
+    ) -> Player:
+        raise NotImplementedError
+
+    @abstractmethod
+    def store_player_by_token(
+        self,
+        token: str,
+        player: Player,
     ):
         raise NotImplementedError

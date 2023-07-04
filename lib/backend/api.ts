@@ -17,6 +17,7 @@ interface ApiProps {
   gameTable: dynamodb.ITable;
   memoryTable: dynamodb.ITable;
   questionTable: dynamodb.ITable;
+  tokenTable: dynamodb.ITable;
 }
 
 export class Api extends Construct {
@@ -34,6 +35,7 @@ export class Api extends Construct {
         GAME_TABLE: props.gameTable.tableName,
         SESSION_TABLE: props.memoryTable.tableName,
         QUESTION_TABLE: props.questionTable.tableName,
+        TOKEN_TABLE: props.tokenTable.tableName,
         OPENAI_API_KEY_SECRET: apiKey.secretName,
       },
       memorySize: 256,
@@ -46,6 +48,7 @@ export class Api extends Construct {
     props.gameTable.grantReadWriteData(handlerFunction);
     props.memoryTable.grantReadWriteData(handlerFunction);
     props.questionTable.grantReadWriteData(handlerFunction);
+    props.tokenTable.grantReadWriteData(handlerFunction);
 
     const quizIntegration = new integrations.HttpLambdaIntegration('Integration', handlerFunction);
     const authorizer = new authorizers.HttpJwtAuthorizer('JwtAuthorizer', Auth0Settings.ISSUER_URL, {
