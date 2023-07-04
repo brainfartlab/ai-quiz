@@ -291,7 +291,7 @@ class DynamoGateway(BaseGateway):
 
             return Player(user_data["PlayerId"])
         else:
-            raise UnknownToken
+            raise UnknownToken(token)
 
     def store_player_by_token(self, token: str, player: Player, duration: int = 3600):
         token_hash = hash(token)
