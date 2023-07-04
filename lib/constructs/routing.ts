@@ -36,8 +36,9 @@ export class Routing extends Construct {
       stage: props.stage,
     });
 
-    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
-      domainName: `${props.environment}.brainfartlab.com`,
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+      zoneName: `${props.environment}.brainfartlab.com`,
+      hostedZoneId: props.hostedZoneId,
     });
     // const hostedZone = route53.HostedZone.fromHostedZoneId(this, 'HostedZone', props.hostedZoneId);
     new route53.CnameRecord(this, 'QuizFrontEndRecord', {
