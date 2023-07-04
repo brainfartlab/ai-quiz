@@ -13,6 +13,7 @@ import { Construct } from 'constructs';
 import { Auth0Settings, DomainSettings } from '../constants';
 
 interface ApiProps {
+  origin: string;
   gameTable: dynamodb.ITable;
   memoryTable: dynamodb.ITable;
   questionTable: dynamodb.ITable;
@@ -65,7 +66,7 @@ export class Api extends Construct {
           apigw2.CorsHttpMethod.ANY,
         ],
         allowOrigins: [
-          'http://localhost:1234',
+          props.origin,
         ],
       },
       createDefaultStage: false,

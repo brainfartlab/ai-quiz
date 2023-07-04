@@ -21,7 +21,14 @@ export class QuizStack extends cdk.Stack {
       retainData: props.environment === 'prd',
     });
 
+    const origin = {
+      'dev': 'https://darling-snickerdoodle-52e50d.netlify.app',
+      'tst': 'http://localhost:1234',
+      'prd': '',
+    }[props.environment];
+
     const quizApi = new Api(this, 'QuizApi', {
+      origin,
       gameTable: data.gameTable,
       memoryTable: chatMemory.memoryTable,
       questionTable: data.questionTable,
