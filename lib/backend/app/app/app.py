@@ -7,21 +7,18 @@ from auth0.authentication import Users
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import (
     APIGatewayHttpResolver,
-    Response,
     content_types,
+    Response,
 )
 from aws_lambda_powertools.event_handler.exceptions import (
     NotFoundError,
-    ServiceError,
 )
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
-import boto3
-
-from .game import Game, InvalidGame, QuestionsLimitReached
-from .game_service import OpenAIService
-from .gateway import DynamoGateway, NoSuchGame, NoSuchQuestion, UnknownToken
-from .player import Player
+from common.game import Game, GameStatus, InvalidGame, QuestionsLimitReached
+from common.gateway import DynamoGateway, NoSuchGame, NoSuchQuestion, UnknownToken
+from common.player import Player
+from common.question import Question, QuestionFeedback
 
 
 tracer = Tracer()
@@ -30,34 +27,38 @@ app = APIGatewayHttpResolver()
 
 
 def initialize():
-    global gateway, service
-
-    secrets_client = boto3.client("secretsmanager")
-    openai_key = secrets_client.get_secret_value(
-        SecretId=os.getenv("OPENAI_API_KEY_SECRET")
-    )
+    global gateway
 
     gateway = DynamoGateway(
         game_table=os.getenv("GAME_TABLE"),
         question_table=os.getenv("QUESTION_TABLE"),
         token_table=os.getenv("TOKEN_TABLE"),
     )
-    service = OpenAIService(
-        api_key=openai_key["SecretString"],
-        session_table=os.getenv("SESSION_TABLE"),
-    )
 
 
 initialize()
 
 
+def represent_game(game: Game):
+    global gateway
+
+    unanswered_count = gateway.count_game_unanswered_questions(game)
+
+    return {
+        "questions_answered": game.questions_limit - unanswered_count,
+        **game.to_dict(),
+    }
+
+
 @app.get("/games")
 @tracer.capture_method
 def get_games():
-    player = get_player(app.current_event)
-    games = gateway.list_player_games(player.player_id)
+    global gateway
 
-    return {"games": [game.to_dict() for game in games]}
+    player = get_player(app.current_event)
+    games = gateway.list_player_games(player)
+
+    return {"games": [represent_game(game) for game in games]}
 
 
 @app.post("/games")
@@ -73,8 +74,8 @@ def start_game():
         questions_limit=15,
     )
 
-    gateway.store_game(player.player_id, game)
-    return game.to_dict()
+    gateway.store_game(player, game)
+    return represent_game(game)
 
 
 @app.get("/games/<game>")
@@ -83,9 +84,22 @@ def get_game(game):
     global gateway
 
     player = get_player(app.current_event)
-    game = gateway.get_game(player.player_id, game)
+    game = gateway.get_game(player, game)
 
-    return game.to_dict()
+    return represent_game(game)
+
+
+def represent_question(question: Question):
+    if question.is_answered:
+        return {
+            "prompt": question.prompt,
+            "solution": question.correct_answer,
+            "result": question.choice == question.correct_answer,
+        }
+
+    return {
+        "prompt": question.prompt,
+    }
 
 
 @app.get("/games/<game>/questions")
@@ -94,39 +108,21 @@ def get_questions(game):
     global gateway
 
     player = get_player(app.current_event)
-    game = gateway.get_game(player.player_id, game)
+    game = gateway.get_game(player, game)
 
-    return {
-        "questions": [
-            {
-                "prompt": question.prompt,
-                "solution": question.solution_str,
-                "result": question.answered_correctly,
-            }
-            if question.is_answered
-            else {
-                "prompt": question.prompt,
-            }
-            for question in game.questions
-        ]
-    }
+    return {"questions": [represent_question(question) for question in game.questions]}
 
 
 @app.post("/games/<game>/questions/ask")
 @tracer.capture_method
-def generate_question(game):
+def pose_question(game):
     global gateway, service
 
     player = get_player(app.current_event)
-    game = gateway.get_game(player.player_id, game)
+    game = gateway.get_game(player, game)
 
-    question = game.quiz(service)
-    gateway.update_game(player.player_id, game)
-
-    return {
-        "prompt": question.prompt,
-        "options": question.options,
-    }
+    question = next(gateway.list_game_unanswered_questions(game, 1))
+    return question.pose()
 
 
 @app.get("/games/<game>/questions/<question>")
@@ -135,12 +131,17 @@ def get_question(game, question):
     global gateway
 
     player = get_player(app.current_event)
-    game = gateway.get_game(player.player_id, game)
+    game = gateway.get_game(player, game)
     question = question.get_game_question(game, question)
 
+    return represent_question(question)
+
+
+def represent_feedback(feedback: QuestionFeedback):
     return {
-        "question": question.prompt,
-        "options": question.options,
+        "result": feedback.result,
+        "solution": feedback.solution,
+        "clarification": feedback.clarification,
     }
 
 
@@ -152,18 +153,18 @@ def answer_question(game):
     json_payload = app.current_event.json_body
 
     player = get_player(app.current_event)
-    game = gateway.get_game(player.player_id, game)
+    game = gateway.get_game(player, game)
 
-    question = game.quiz(service)
+    question = next(gateway.list_game_unanswered_questions(game, 1))
     feedback = question.answer(json_payload["choice"])
 
-    gateway.update_game(player.player_id, game)
+    gateway.update_game_question_choice(game, question)
 
-    return {
-        "result": feedback.result,
-        "solution": feedback.solution,
-        "clarification": feedback.clarification,
-    }
+    if question.index == game.questions_limit:
+        game.game_status = GameStatus.FINISHED
+        gateway.update_game_status(player, game)
+
+    return represent_feedback(feedback)
 
 
 @app.exception_handler(NoSuchGame)
@@ -190,18 +191,12 @@ def handle_questions_limit_reached(ex: QuestionsLimitReached):
     game_id = ex.game.game_id
     questions_limit = ex.game.questions_limit
 
+    message = f"Game {game_id} has reached questions limit of {questions_limit}"
+
     return Response(
         status_code=400,
         content_type=content_types.APPLICATION_JSON,
-        body=json.dumps(
-            {
-                "errors": [
-                    {
-                        "message": f"Game {game_id} has reached questions limit of {questions_limit}",
-                    }
-                ]
-            }
-        ),
+        body=json.dumps({"errors": [{"message": message}]}),
     )
 
 
