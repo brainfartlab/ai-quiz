@@ -37,7 +37,7 @@ class Question:
         random.shuffle(options)
 
         return {
-            "question": self.prompt,
+            "prompt": self.prompt,
             "options": options,
         }
 
