@@ -1,21 +1,23 @@
 from datetime import datetime, timezone
+import json
 
 import boto3
 from botocore.stub import ANY, Stubber
 import pytest
 
 from common.game import Game, GameStatus
-from common.gateway import DynamoGateway, NoSuchGame, NoSuchQuestion
+from common.gateway import AmazonGateway, NoSuchGame, NoSuchQuestion
 from common.player import Player
 from common.question import Question
 
 
+PARAM_GAME_QUEUE = "DummyGameQueue"
 PARAM_GAME_TABLE = "DummyGameTable"
 PARAM_QUESTION_TABLE = "DummyQuestionTable"
 PARAM_TOKEN_TABLE = "DummyTokenTable"
 
 
-class TestDynamoGateway:
+class TestAmazonGateway:
     @pytest.fixture
     def example_player(self):
         player = Player(
@@ -52,10 +54,10 @@ class TestDynamoGateway:
         return question
 
     def test_list_player_games(self, example_player):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "query",
             {
                 "Items": [
@@ -110,9 +112,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -124,13 +127,13 @@ class TestDynamoGateway:
             assert games[0].game_status == GameStatus.READY
             assert games[1].game_status == GameStatus.PENDING
             assert games[2].game_status == GameStatus.FINISHED
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_get_game(self, example_player):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "get_item",
             {
                 "Item": {
@@ -156,9 +159,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -168,13 +172,13 @@ class TestDynamoGateway:
 
             assert game.game_id == "game1"
             assert game.game_status == GameStatus.PENDING
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_get_game_nonexistent(self, example_player):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "get_item",
             {},
             expected_params={
@@ -186,9 +190,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -197,13 +202,13 @@ class TestDynamoGateway:
             with pytest.raises(NoSuchGame):
                 gateway.get_game(example_player, "game1")
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_store_game(self, example_game, example_player):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "put_item",
             {},
             expected_params={
@@ -219,9 +224,25 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        sqs_client = boto3.client("sqs")
+        sqs_stubber = Stubber(sqs_client)
+
+        sqs_stubber.add_response(
+            "send_message",
+            {},
+            expected_params={
+                "QueueUrl": PARAM_GAME_QUEUE,
+                "MessageBody": json.dumps({
+                    "game_id": "game1"
+                }),
+            },
+        )
+
+        with dynamo_stubber, sqs_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                sqs_client=sqs_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -229,13 +250,13 @@ class TestDynamoGateway:
 
             gateway.store_game(example_player, example_game)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_update_game_status(self, example_player, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "update_item",
             {},
             expected_params={
@@ -252,9 +273,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -263,13 +285,13 @@ class TestDynamoGateway:
             example_game.game_status = GameStatus.FINISHED
             gateway.update_game_status(example_player, example_game)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_list_game_questions(self, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "query",
             {
                 "Items": [
@@ -325,9 +347,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -340,13 +363,13 @@ class TestDynamoGateway:
             assert not questions[1].is_answered
             assert not questions[2].is_answered
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_list_game_unanswered_questions(self, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "query",
             {
                 "Items": [
@@ -389,9 +412,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -403,13 +427,13 @@ class TestDynamoGateway:
             assert not questions[0].is_answered
             assert not questions[1].is_answered
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_count_game_unanswered_questions(self, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "query",
             {
                 "Count": 2,
@@ -425,9 +449,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -437,13 +462,13 @@ class TestDynamoGateway:
 
             assert count == 2
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_get_game_question(self, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "get_item",
             {
                 "Item": {
@@ -469,9 +494,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -480,13 +506,13 @@ class TestDynamoGateway:
             question = gateway.get_game_question(example_game, 2)
             assert question.correct_answer == ""
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_get_game_question_nonexistent(self, example_game):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "get_item",
             {},
             expected_params={
@@ -498,9 +524,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -509,13 +536,13 @@ class TestDynamoGateway:
             with pytest.raises(NoSuchQuestion):
                 gateway.get_game_question(example_game, 2)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_store_game_question(self, example_game, example_question):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "put_item",
             {},
             expected_params={
@@ -540,9 +567,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -550,13 +578,13 @@ class TestDynamoGateway:
 
             gateway.store_game_question(example_game, example_question)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_store_game_questions(self, example_game, example_question):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "batch_write_item",
             {},
             expected_params={
@@ -607,9 +635,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -623,13 +652,13 @@ class TestDynamoGateway:
                 ],
             )
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_update_game_question_choice(self, example_game, example_question):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "update_item",
             {},
             expected_params={
@@ -646,9 +675,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -657,13 +687,13 @@ class TestDynamoGateway:
             example_question.answer("Chemicals")
             gateway.update_game_question_choice(example_game, example_question)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_update_game_question_choice_last(self, example_game, example_question):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        stubber.add_response(
+        dynamo_stubber.add_response(
             "update_item",
             {},
             expected_params={
@@ -680,9 +710,10 @@ class TestDynamoGateway:
             },
         )
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -691,17 +722,18 @@ class TestDynamoGateway:
             example_question.answer("Chemicals")
             gateway.update_game_question_choice(example_game, example_question)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()
 
     def test_update_game_question_choice_no_choice(
         self, example_game, example_question
     ):
-        client = boto3.client("dynamodb")
-        stubber = Stubber(client)
+        dynamo_client = boto3.client("dynamodb")
+        dynamo_stubber = Stubber(dynamo_client)
 
-        with stubber:
-            gateway = DynamoGateway(
-                client=client,
+        with dynamo_stubber:
+            gateway = AmazonGateway(
+                dynamo_client=dynamo_client,
+                game_queue=PARAM_GAME_QUEUE,
                 game_table=PARAM_GAME_TABLE,
                 question_table=PARAM_QUESTION_TABLE,
                 token_table=PARAM_TOKEN_TABLE,
@@ -709,4 +741,4 @@ class TestDynamoGateway:
 
             gateway.update_game_question_choice(example_game, example_question)
 
-            stubber.assert_no_pending_responses()
+            dynamo_stubber.assert_no_pending_responses()

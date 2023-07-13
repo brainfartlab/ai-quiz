@@ -11,5 +11,6 @@ cdk.out
 *.swp
 
 # Python
+*.whl
 .venv
 __pycache__

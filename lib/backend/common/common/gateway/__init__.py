@@ -1,8 +1,8 @@
 from .base import NoSuchGame, NoSuchQuestion, UnknownToken
-from .dynamo import DynamoGateway
+from .aws import AmazonGateway
 
 __all__ = [
-    "DynamoGateway",
+    "AmazonGateway",
     "NoSuchGame",
     "NoSuchQuestion",
     "UnknownToken",

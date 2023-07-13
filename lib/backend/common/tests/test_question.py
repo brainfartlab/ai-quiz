@@ -66,7 +66,7 @@ class TestQuestion:
     def test_pose(self, example_question):
         posed_question = example_question.pose()
 
-        assert posed_question["question"] == example_question.prompt
+        assert posed_question["prompt"] == example_question.prompt
         assert set(posed_question["options"]) == set(
             [example_question.correct_answer, *example_question.wrong_answers]
         )
