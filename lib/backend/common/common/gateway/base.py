@@ -57,7 +57,6 @@ class BaseGateway(ABC):
     def count_game_unanswered_questions(
         self,
         game: Game,
-        answered_only: bool,
     ) -> List[Question]:
         raise NotImplementedError
 
