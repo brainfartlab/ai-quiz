@@ -107,6 +107,7 @@ class AmazonGateway(BaseGateway):
         response = self.dynamo_client.update_item(
             TableName=self.game_table,
             Key={
+                "PlayerId": {"S": player.player_id},
                 "GameId": {"S": game.game_id},
             },
             ConditionExpression="GameStatus <> :finished",
