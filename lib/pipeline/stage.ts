@@ -11,8 +11,12 @@ export class PipelineStage extends Stage {
   constructor(scope: Construct, id: string, props: PipelineStageProps) {
     super(scope, id, props);
 
+    const config = this.node.tryGetContext(props.environment);
+
     new QuizStack(this, 'QuizStack', {
       environment: props.environment,
+      hostedZoneId: config.hostedZoneId,
+      netlifyDomain: config.netlidyDomain,
     });
   }
 }
