@@ -10,7 +10,7 @@ interface RoutingProps {
   api: apigw2.IHttpApi;
   environment: 'dev' | 'prd' | 'tst';
   hostedZoneId: string;
-  netlifyDomain: string;
+  netlifyDomain?: string;
   path: string;
   stage: apigw2.HttpStage;
 }
@@ -41,10 +41,13 @@ export class Routing extends Construct {
       hostedZoneId: props.hostedZoneId,
     });
     // const hostedZone = route53.HostedZone.fromHostedZoneId(this, 'HostedZone', props.hostedZoneId);
-    new route53.CnameRecord(this, 'QuizFrontEndRecord', {
-      recordName: `quiz.${props.environment}.${DomainSettings.domainName}`,
-      zone: hostedZone,
-      domainName: props.netlifyDomain,
-    });
+
+    if (props.netlifyDomain !== undefined) {
+      new route53.CnameRecord(this, 'QuizFrontEndRecord', {
+        recordName: `quiz.${props.environment}.${DomainSettings.domainName}`,
+        zone: hostedZone,
+        domainName: props.netlifyDomain,
+      });
+    }
   }
 }

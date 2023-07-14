@@ -11,5 +11,8 @@ cdk.out
 *.swp
 
 # Python
+*.whl
 .venv
 __pycache__
+.coverage
+.env

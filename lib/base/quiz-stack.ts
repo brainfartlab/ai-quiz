@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import * as pythonLambda from '@aws-cdk/aws-lambda-python-alpha';
 import { Construct } from 'constructs';
 
 import { Cache } from '../constructs/cache';
@@ -6,9 +7,13 @@ import { Data } from '../constructs/data';
 import { ChatMemory } from '../constructs/memory';
 import { Routing } from '../constructs/routing';
 import { Api } from '../backend/api';
+import { Common } from '../backend/common';
+import { GameFlow } from '../backend/gameflow';
 
 interface QuizStackProps extends cdk.StackProps {
   environment: 'dev' | 'prd' | 'tst';
+  hostedZoneId: string;
+  netlifyDomain?: string;
 }
 
 export class QuizStack extends cdk.Stack {
@@ -25,24 +30,30 @@ export class QuizStack extends cdk.Stack {
       retainData: props.environment === 'prd',
     });
 
-    const origin = {
-      'dev': 'https://quiz.dev.brainfartlab.com',
-      'tst': 'http://localhost:1234',
-      'prd': '',
-    }[props.environment];
+    const origin = props.environment === 'tst' ? 'http://localhost:1234' : `https://quiz.${props.environment}.brainfartlab.com`;
+
+    const commonFunctionality = new Common(this, 'CommonFunctionality');
+
+    const gameFlow = new GameFlow(this, 'GameFlow', {
+      commonLayer: commonFunctionality.commonLayer,
+      gameTable: data.gameTable,
+      questionTable: data.questionTable,
+    });
 
     const quizApi = new Api(this, 'QuizApi', {
-      origin,
+      commonLayer: commonFunctionality.commonLayer,
+      gameFlowQueue: gameFlow.gameFlowQueue,
       gameTable: data.gameTable,
       memoryTable: chatMemory.memoryTable,
+      origin,
       questionTable: data.questionTable,
       tokenTable: cache.tokenTable,
     });
 
     new Routing(this, 'Routing', {
       api: quizApi.api,
-      hostedZoneId: 'Z101975334KQ8NOCYJ97L',
-      netlifyDomain: 'darling-snickerdoodle-52e50d.netlify.app',
+      hostedZoneId: props.hostedZoneId,
+      netlifyDomain: props.netlifyDomain,
       path: 'quiz/v1',
       environment: props.environment,
       stage: quizApi.stage,

@@ -31,6 +31,7 @@ export class Data extends Construct {
         type: dynamodb.AttributeType.NUMBER,
       },
       nonKeyAttributes: [
+        'GameStatus',
         'Keywords',
         'QuestionsLimit',
       ],

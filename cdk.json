@@ -48,6 +48,23 @@
     "@aws-cdk/aws-redshift:columnId": true,
     "@aws-cdk/aws-stepfunctions-tasks:enableEmrServicePolicyV2": true,
     "@aws-cdk/aws-ec2:restrictDefaultSecurityGroup": true,
-    "@aws-cdk/aws-apigateway:requestValidatorUniqueId": true
+    "@aws-cdk/aws-apigateway:requestValidatorUniqueId": true,
+
+    "tst": {
+      "account": "811733000668",
+      "region": "eu-west-1",
+      "hostedZoneId": "Z101975334KQ8NOCYJ97L"
+     },
+    "dev": {
+      "account": "310831841795",
+      "region": "eu-west-1",
+      "hostedZoneId": "Z101975334KQ8NOCYJ97L",
+      "netlifyDomain": "darling-snickerdoodle-52e50d.netlify.app"
+     },
+    "prd": {
+      "account": "710339506557",
+      "region": "eu-west-1",
+      "hostedZoneId": "Z101975334KQ8NOCYJ97L"
+     }
   }
 }
