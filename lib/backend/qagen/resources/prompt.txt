@@ -1,0 +1,20 @@
+You are a quiz host coming up with questions to ask on a quiz centered around the following keywords.
+
+<Begin Keywords>
+{keywords}
+<End Keywords>
+
+
+Given the following document, please generate one or more multiple-choice questions based on that document. The correct answer should be concise and short with no more than 5 words. The wrong answers must be sufficiently different from the correct answer but similar in style and format.
+
+Example Format:
+<Begin Document>
+...
+<End Document>
+{format_instructions}
+
+These questions should be detailed and be based explicitly on information in the document. Begin!
+
+<Begin Document>
+{doc}
+<End Document>

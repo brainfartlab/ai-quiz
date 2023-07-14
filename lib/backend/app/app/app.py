@@ -16,7 +16,7 @@ from aws_lambda_powertools.event_handler.exceptions import (
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from common.game import Game, GameStatus, InvalidGame, QuestionsLimitReached
-from common.gateway import DynamoGateway, NoSuchGame, NoSuchQuestion, UnknownToken
+from common.gateway import AmazonGateway, NoSuchGame, NoSuchQuestion, UnknownToken
 from common.player import Player
 from common.question import Question, QuestionFeedback
 
@@ -29,10 +29,12 @@ app = APIGatewayHttpResolver()
 def initialize():
     global gateway
 
-    gateway = DynamoGateway(
+    gateway = AmazonGateway(
+        game_queue=os.getenv("GAME_QUEUE_URL"),
         game_table=os.getenv("GAME_TABLE"),
         question_table=os.getenv("QUESTION_TABLE"),
         token_table=os.getenv("TOKEN_TABLE"),
+        openai_secret=None,
     )
 
 
@@ -109,8 +111,9 @@ def get_questions(game):
 
     player = get_player(app.current_event)
     game = gateway.get_game(player, game)
+    questions = gateway.list_game_questions(game)
 
-    return {"questions": [represent_question(question) for question in game.questions]}
+    return {"questions": [represent_question(question) for question in questions]}
 
 
 @app.post("/games/<game>/questions/ask")
@@ -140,7 +143,7 @@ def get_question(game, question):
 def represent_feedback(feedback: QuestionFeedback):
     return {
         "result": feedback.result,
-        "solution": feedback.solution,
+        "solution": feedback.correct_answer,
         "clarification": feedback.clarification,
     }
 

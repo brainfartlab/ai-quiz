@@ -2,6 +2,11 @@ from dataclasses import dataclass
 import random
 from typing import Any, Dict, List
 
+from aws_lambda_powertools import Logger
+
+
+logger = Logger()
+
 
 class InvalidQuestion(Exception):
     pass
@@ -52,12 +57,12 @@ class Question:
         return self.choice is not None
 
     def answer(self, choice: str) -> QuestionFeedback:
-        if choice == self.answer or choice in self.wrong_answers:
+        if choice == self.correct_answer or choice in self.wrong_answers:
             self.choice = choice
 
             return QuestionFeedback(
                 result=self.choice == self.correct_answer,
-                correct_answer=self.answer,
+                correct_answer=self.correct_answer,
                 clarification=self.clarification,
             )
 

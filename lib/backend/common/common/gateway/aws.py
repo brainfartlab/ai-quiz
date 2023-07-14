@@ -36,12 +36,16 @@ class AmazonGateway(BaseGateway):
     game_table: str
     question_table: str
     token_table: str
+    openai_secret: str
 
     dynamo_client: boto3.Session = field(
         repr=False, default_factory=lambda: boto3.client("dynamodb")
     )
     sqs_client: boto3.Session = field(
         repr=False, default_factory=lambda: boto3.client("sqs")
+    )
+    secrets_client: boto3.Session = field(
+        repr=False, default_factory=lambda: boto3.client("secretsmanager")
     )
 
     def list_player_games(
@@ -194,7 +198,7 @@ class AmazonGateway(BaseGateway):
             ExpressionAttributeValues={
                 ":game_id": {"S": game.game_id},
             },
-            Select="Count",
+            Select="COUNT",
         ):
             count += page["Count"]
 
@@ -379,3 +383,10 @@ class AmazonGateway(BaseGateway):
         )
 
         print(response)
+
+    def get_openai_token(self) -> str:
+        secret = self.secrets_client.get_secret_value(
+            SecretId=self.openai_secret,
+        )
+
+        return secret["SecretString"]

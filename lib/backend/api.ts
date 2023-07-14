@@ -4,6 +4,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as apigw2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import * as authorizers from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 import * as integrations from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
@@ -13,9 +14,11 @@ import { Construct } from 'constructs';
 import { Auth0Settings, DomainSettings } from '../constants';
 
 interface ApiProps {
-  origin: string;
+  commonLayer: lambda.ILayerVersion;
+  gameFlowQueue: sqs.IQueue;
   gameTable: dynamodb.ITable;
   memoryTable: dynamodb.ITable;
+  origin: string;
   questionTable: dynamodb.ITable;
   tokenTable: dynamodb.ITable;
 }
@@ -32,18 +35,21 @@ export class Api extends Construct {
     const handlerFunction = new pythonLambda.PythonFunction(this, 'HandlerFunction', {
       entry: 'lib/backend/app',
       environment: {
+        GAME_QUEUE_URL: props.gameFlowQueue.queueUrl,
         GAME_TABLE: props.gameTable.tableName,
         SESSION_TABLE: props.memoryTable.tableName,
         QUESTION_TABLE: props.questionTable.tableName,
         TOKEN_TABLE: props.tokenTable.tableName,
-        OPENAI_API_KEY_SECRET: apiKey.secretName,
       },
+      layers: [
+        props.commonLayer,
+      ],
       memorySize: 256,
       runtime: lambda.Runtime.PYTHON_3_10,
       timeout: cdk.Duration.seconds(60),
     });
 
-    apiKey.grantRead(handlerFunction);
+    props.gameFlowQueue.grantSendMessages(handlerFunction);
 
     props.gameTable.grantReadWriteData(handlerFunction);
     props.memoryTable.grantReadWriteData(handlerFunction);

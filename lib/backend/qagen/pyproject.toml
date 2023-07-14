@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "qagen"
+version = "0.1.0"
+description = ""
+authors = ["Antoine Vandermeersch <avdmeers@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langchain = {extras = ["docarray"], version = "^0.0.231"}
+openai = "^0.27.8"
+aws-lambda-powertools = {extras = ["tracer"], version = "^2.19.0"}
+ngram = "^4.0.3"
+wikipedia = "^1.4.0"
+tiktoken = "^0.4.0"
+
+
+[tool.poetry.group.dev.dependencies]
+boto3 = "^1.28.2"
+ipython = "^8.14.0"
+common = {path = "../common"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -22,6 +22,7 @@ class Game:
     def to_dict(self):
         return {
             "id": self.game_id,
+            "status": self.game_status.value,
             "keywords": list(self.keywords),
             "questions_limit": self.questions_limit,
             "creation_time": int(1000 * self.creation_time.timestamp()),

@@ -114,3 +114,7 @@ class BaseGateway(ABC):
         player: Player,
     ):
         raise NotImplementedError
+
+    @abstractmethod
+    def get_openai_token(self):
+        raise NotImplementedError

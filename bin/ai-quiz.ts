@@ -4,10 +4,14 @@ import * as cdk from 'aws-cdk-lib';
 import { QuizStack } from '../lib/base/quiz-stack';
 
 const app = new cdk.App();
+const env = app.node.tryGetContext("env")
+const config = app.node.tryGetContext(env)
+
 new QuizStack(app, 'QuizStack', {
   env: {
-    account: '811733000668',
-    region: 'eu-west-1',
+    account: config.account,
+    region: config.region,
   },
-  environment: 'tst'
+  environment: env,
+  hostedZoneId: config.hostedZoneId,
 });
