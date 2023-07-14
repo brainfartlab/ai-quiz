@@ -32,7 +32,7 @@ export class GameFlow extends Construct {
       layers: [
         props.commonLayer,
       ],
-      memorySize: 256,
+      memorySize: 1024,
       runtime: lambda.Runtime.PYTHON_3_10,
       timeout: designDuration,
     });
