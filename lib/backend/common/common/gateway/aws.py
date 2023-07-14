@@ -96,6 +96,7 @@ class AmazonGateway(BaseGateway):
             QueueUrl=self.game_queue,
             MessageBody=json.dumps({
                 "game_id": game.game_id,
+                "player_id": player.player_id,
             }),
         )
 
@@ -108,7 +109,7 @@ class AmazonGateway(BaseGateway):
             Key={
                 "GameId": {"S": game.game_id},
             },
-            ConditionExpression="GameStatus != :finished",
+            ConditionExpression="GameStatus <> :finished",
             UpdateExpression="SET GameStatus = :game_status",
             ExpressionAttributeValues={
                 ":game_status": {"S": game.game_status.value},
@@ -300,9 +301,10 @@ class AmazonGateway(BaseGateway):
         game: Game,
         questions: List[Question],
     ):
+        print(self.question_table)
         response = self.dynamo_client.batch_write_item(
             RequestItems={
-                self.game_table: [
+                self.question_table: [
                     {
                         "PutRequest": {
                             "Item": serialize(self._translate_question(game, question)),
