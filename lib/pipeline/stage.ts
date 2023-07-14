@@ -16,7 +16,7 @@ export class PipelineStage extends Stage {
     new QuizStack(this, 'QuizStack', {
       environment: props.environment,
       hostedZoneId: config.hostedZoneId,
-      netlifyDomain: config.netlidyDomain,
+      netlifyDomain: config.netlifyDomain,
     });
   }
 }
