@@ -20,9 +20,6 @@ export class QuizStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: QuizStackProps) {
     super(scope, id, props);
 
-    const chatMemory = new ChatMemory(this, 'ChatMemory', {
-      retainData: props.environment === 'prd',
-    });
     const data = new Data(this, 'DataStorage', {
       retainData: props.environment === 'prd',
     });
@@ -44,7 +41,6 @@ export class QuizStack extends cdk.Stack {
       commonLayer: commonFunctionality.commonLayer,
       gameFlowQueue: gameFlow.gameFlowQueue,
       gameTable: data.gameTable,
-      memoryTable: chatMemory.memoryTable,
       origin,
       questionTable: data.questionTable,
       tokenTable: cache.tokenTable,

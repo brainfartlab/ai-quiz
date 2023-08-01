@@ -14,6 +14,7 @@ export class Data extends Construct {
     super(scope, id);
 
     const gameTable = new dynamodb.Table(this, 'GameTable', {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: 'PlayerId',
         type: dynamodb.AttributeType.STRING,
@@ -39,6 +40,7 @@ export class Data extends Construct {
     });
 
     const questionTable = new dynamodb.Table(this, 'QuestionTable', {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: 'GameId',
         type: dynamodb.AttributeType.STRING,

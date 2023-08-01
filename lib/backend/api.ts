@@ -17,7 +17,6 @@ interface ApiProps {
   commonLayer: lambda.ILayerVersion;
   gameFlowQueue: sqs.IQueue;
   gameTable: dynamodb.ITable;
-  memoryTable: dynamodb.ITable;
   origin: string;
   questionTable: dynamodb.ITable;
   tokenTable: dynamodb.ITable;
@@ -37,7 +36,6 @@ export class Api extends Construct {
       environment: {
         GAME_QUEUE_URL: props.gameFlowQueue.queueUrl,
         GAME_TABLE: props.gameTable.tableName,
-        SESSION_TABLE: props.memoryTable.tableName,
         QUESTION_TABLE: props.questionTable.tableName,
         TOKEN_TABLE: props.tokenTable.tableName,
       },
@@ -52,7 +50,6 @@ export class Api extends Construct {
     props.gameFlowQueue.grantSendMessages(handlerFunction);
 
     props.gameTable.grantReadWriteData(handlerFunction);
-    props.memoryTable.grantReadWriteData(handlerFunction);
     props.questionTable.grantReadWriteData(handlerFunction);
     props.tokenTable.grantReadWriteData(handlerFunction);
 

@@ -13,6 +13,7 @@ export class Cache extends Construct {
     super(scope, id);
 
     const tokenCache = new dynamodb.Table(this, 'TokenCache', {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: 'TokenHash',
         type: dynamodb.AttributeType.STRING,
